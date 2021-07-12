@@ -1,0 +1,89 @@
+---
+# tasks file for rocky
+#
+- name: enable repo
+  become: true
+  shell: dnf config-manager --enable elrepo && dnf config-manager --enable ha
+
+- name: Upgrade all packages
+  become: true
+  yum:
+    name: '*'
+    state: latest
+
+- name: install packages
+  become: true
+  package: 
+    name: podman, snapd
+    state: present
+
+## Chrome
+- name: download chrome rpm
+  become: true
+  get_url:
+    url: https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
+    dest: /tmp/
+
+- name: install chrome rpm
+  become: true
+  yum: 
+    name: /tmp/google-chrome-stable_current_x86_64.rpm
+    state: present
+    disable_gpg_check: true
+
+## VSCode
+- name: import vscode repo
+  become: true
+  command: rpm --import https://packages.microsoft.com/keys/microsoft.asc
+
+- name: vscode gpg resources
+  become: true
+  shell: sh -c 'echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" > /etc/yum.repos.d/vscode.repo'
+
+- name: install vscode package
+  become: true
+  yum:
+    name: code
+    state: present
+
+## KDE Plasma
+- name: Install the 'Development tools' package group
+  become: true
+  yum:
+    name: "@KDE Plasma Workspaces"
+    state: present
+    enablerepo: "epel,powertools"
+
+- name: run graphical
+  become: true
+  command: systemctl set-default graphical
+
+## Teamspeak Installation
+- name: Create teamspeak directory if it does not exist
+  become: true
+  ansible.builtin.file:
+    path: /etc/teamspeak
+    state: directory
+    mode: '0775'
+
+- name: download teamspeak
+  become: true
+  get_url:
+    url: https://files.teamspeak-services.com/releases/client/3.5.6/TeamSpeak3-Client-linux_amd64-3.5.6.run
+    dest: /etc/teamspeak
+  notify: teamspeak TODO
+
+- name: Check if Teamspeak icon already exists
+  stat:
+    path: /home/maddin/Schreibtisch/teamspeak.desktop
+  register: stat_result
+
+- name: Copy teamspeak as desktop icon
+  copy:
+    src: ./files/teamspeak.desktop
+    dest: /home/maddin/Schreibtisch/teamspeak.desktop
+    owner: foo
+    group: foo
+    mode: '0750'
+  when: not stat_result.stat.exists
+
